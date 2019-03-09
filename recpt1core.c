@@ -39,11 +39,50 @@ close_tuner(thread_data *tdata)
 }
 
 void
+print_stat(struct dtv_stats stat)
+{
+    switch (stat.scale) {
+    case FE_SCALE_NOT_AVAILABLE:
+        fprintf(stderr, "N/A");
+	break;
+    case FE_SCALE_COUNTER:
+        fprintf(stderr, "%lld", stat.uvalue);
+	break;
+    case FE_SCALE_RELATIVE:
+        fprintf(stderr, "%lf", (float)stat.uvalue / 655.35);
+	break;
+    case FE_SCALE_DECIBEL:
+        fprintf(stderr, "%lf", (float)stat.svalue / 1000);
+	break;
+    }
+}
+
+void
 calc_cn(void)
 {
-      int strength=0;
-      ioctl(fefd, FE_READ_SNR, &strength);
-      fprintf(stderr,"SNR: %d\n",strength);
+      struct dtv_property prop[4];
+      struct dtv_properties props;
+      
+      prop[0].cmd = DTV_STAT_CNR;
+      prop[1].cmd = DTV_STAT_ERROR_BLOCK_COUNT;
+      prop[2].cmd = DTV_STAT_TOTAL_BLOCK_COUNT;
+      prop[3].cmd = DTV_STAT_SIGNAL_STRENGTH;
+      props.props = prop;
+      props.num = 4;
+      
+      if (ioctl(fefd, FE_GET_PROPERTY, &props) < 0) {
+	  fprintf(stderr,"Error\n");
+      } else {
+	  fprintf(stderr, "CNR: ");
+          print_stat(prop[0].u.st.stat[0]);
+	  fprintf(stderr, " ERRBLK: ");
+          print_stat(prop[1].u.st.stat[0]);
+          fprintf(stderr, " TOTALBLK: ");
+          print_stat(prop[2].u.st.stat[0]);
+          fprintf(stderr, " SIG: ");
+          print_stat(prop[3].u.st.stat[0]);
+          fprintf(stderr, "\n");
+      }
 }
 
 int
